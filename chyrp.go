@@ -5,6 +5,9 @@ import (
 	"log"
 	"net/http"
 	"strings"
+
+	"github.com/TheAinzSama/Chirpy/internal/database"
+	"github.com/google/uuid"
 )
 
 func respondWithError(w http.ResponseWriter, code int, msg string, err error) {
@@ -33,17 +36,21 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	w.WriteHeader(code)
 	w.Write(dat)
 }
-func handlerChirpsValidate(w http.ResponseWriter, r *http.Request) {
-	type parameters struct {
-		Body string `json:"body"`
+func (apiCfg *apiConfig) handlerChirps(w http.ResponseWriter, r *http.Request) {
+	type chirp struct {
+		Id         string `json:"id"`
+		Body       string `json:"body"`
+		User_id    string `json:"user_id"`
+		Created_at string `json:"created_at"`
+		Updated_at string `json:"updated_at"`
 	}
-	type returnVals struct {
-		Valid        bool   `json:"valid"`
-		Cleaned_body string `json:"cleaned_body"`
+	type tempVals struct {
+		Body    string    `json:"body"`
+		User_id uuid.UUID `json:"user_id"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
-	params := parameters{}
+	params := tempVals{}
 	err := decoder.Decode(&params)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters", err)
@@ -55,10 +62,22 @@ func handlerChirpsValidate(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusBadRequest, "Chirp is too long", nil)
 		return
 	}
-
-	respondWithJSON(w, http.StatusOK, returnVals{
-		Valid:        true,
-		Cleaned_body: findAndReplace(params.Body),
+	cleanBody := findAndReplace(params.Body)
+	createParams := database.CreateChirpParams{
+		Body:   cleanBody,
+		UserID: params.User_id,
+	}
+	user, err := apiCfg.dbQueries.CreateChirp(r.Context(), createParams)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Failed to create Chirp", nil)
+		return
+	}
+	respondWithJSON(w, http.StatusCreated, chirp{
+		Id:         user.ID.String(),
+		Created_at: user.CreatedAt.String(),
+		Updated_at: user.UpdatedAt.String(),
+		Body:       user.Body,
+		User_id:    user.UserID.String(),
 	})
 }
 

@@ -11,6 +11,7 @@ import (
 type apiConfig struct {
 	fileserverHits atomic.Int32
 	dbQueries      *database.Queries
+	platform       string
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -30,7 +31,16 @@ func (cfg *apiConfig) metricsHandler(w http.ResponseWriter, r *http.Request) {
 	</html>`, cfg.fileserverHits.Load())))
 }
 func (cfg *apiConfig) resetHandler(w http.ResponseWriter, r *http.Request) {
+	if cfg.platform != "dev" {
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte("Reset is only allowed in dev environment."))
+		return
+	}
+
 	cfg.fileserverHits.Store(0)
+	cfg.dbQueries.Reset(r.Context())
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Hits reset to 0 and database reset to initial state."))
 }
 func healthzHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
