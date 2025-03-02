@@ -10,6 +10,14 @@ import (
 	"github.com/google/uuid"
 )
 
+type chirp struct {
+	Id         string `json:"id"`
+	Body       string `json:"body"`
+	User_id    string `json:"user_id"`
+	Created_at string `json:"created_at"`
+	Updated_at string `json:"updated_at"`
+}
+
 func respondWithError(w http.ResponseWriter, code int, msg string, err error) {
 	if err != nil {
 		log.Println(err)
@@ -37,13 +45,6 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	w.Write(dat)
 }
 func (apiCfg *apiConfig) handlerChirps(w http.ResponseWriter, r *http.Request) {
-	type chirp struct {
-		Id         string `json:"id"`
-		Body       string `json:"body"`
-		User_id    string `json:"user_id"`
-		Created_at string `json:"created_at"`
-		Updated_at string `json:"updated_at"`
-	}
 	type tempVals struct {
 		Body    string    `json:"body"`
 		User_id uuid.UUID `json:"user_id"`
@@ -81,13 +82,6 @@ func (apiCfg *apiConfig) handlerChirps(w http.ResponseWriter, r *http.Request) {
 	})
 }
 func (apiCfg *apiConfig) handlerAllChirps(w http.ResponseWriter, r *http.Request) {
-	type chirp struct {
-		Id         string `json:"id"`
-		Body       string `json:"body"`
-		User_id    string `json:"user_id"`
-		Created_at string `json:"created_at"`
-		Updated_at string `json:"updated_at"`
-	}
 	chirps, err := apiCfg.dbQueries.SelectChirps(r.Context())
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Failed to create Chirp", nil)
@@ -105,6 +99,25 @@ func (apiCfg *apiConfig) handlerAllChirps(w http.ResponseWriter, r *http.Request
 		chirpArray = append(chirpArray, newChirp)
 	}
 	respondWithJSON(w, http.StatusOK, chirpArray)
+}
+func (apiCfg *apiConfig) findChirps(w http.ResponseWriter, r *http.Request) {
+	achirpID, err := uuid.Parse(r.PathValue("chirpID"))
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "NO Chirp ID was provided", nil)
+		return
+	}
+	achirps, err := apiCfg.dbQueries.SelectChirp(r.Context(), achirpID)
+	if err != nil {
+		respondWithError(w, http.StatusNotFound, "Failed to find Chirp", nil)
+		return
+	}
+	respondWithJSON(w, http.StatusOK, chirp{
+		Id:         achirps.ID.String(),
+		Created_at: achirps.CreatedAt.String(),
+		Updated_at: achirps.UpdatedAt.String(),
+		Body:       achirps.Body,
+		User_id:    achirps.UserID.String(),
+	})
 }
 
 func findAndReplace(body string) string {
