@@ -80,6 +80,32 @@ func (apiCfg *apiConfig) handlerChirps(w http.ResponseWriter, r *http.Request) {
 		User_id:    user.UserID.String(),
 	})
 }
+func (apiCfg *apiConfig) handlerAllChirps(w http.ResponseWriter, r *http.Request) {
+	type chirp struct {
+		Id         string `json:"id"`
+		Body       string `json:"body"`
+		User_id    string `json:"user_id"`
+		Created_at string `json:"created_at"`
+		Updated_at string `json:"updated_at"`
+	}
+	chirps, err := apiCfg.dbQueries.SelectChirps(r.Context())
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Failed to create Chirp", nil)
+		return
+	}
+	var chirpArray []chirp
+	for _, achirp := range chirps {
+		newChirp := chirp{
+			Id:         achirp.ID.String(),
+			Created_at: achirp.CreatedAt.String(),
+			Updated_at: achirp.UpdatedAt.String(),
+			Body:       achirp.Body,
+			User_id:    achirp.UserID.String(),
+		}
+		chirpArray = append(chirpArray, newChirp)
+	}
+	respondWithJSON(w, http.StatusOK, chirpArray)
+}
 
 func findAndReplace(body string) string {
 	var badWords = []string{"kerfuffle", "sharbert", "fornax"}
