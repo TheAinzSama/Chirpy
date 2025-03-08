@@ -3,6 +3,7 @@ package auth
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -31,7 +32,7 @@ func MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (str
 		Subject:   userID.String(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	ss, err := token.SignedString(tokenSecret)
+	ss, err := token.SignedString([]byte(tokenSecret))
 	if err != nil {
 		return "", err
 	}
@@ -65,4 +66,11 @@ func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 		return uuid.Nil, fmt.Errorf("invalid user ID in token: %v", err)
 	}
 	return userID, nil
+}
+func GetBearerToken(headers http.Header) (string, error) {
+	authHeader := headers.Get("Authorization")
+	if authHeader == "" {
+		return "", fmt.Errorf("empty Authorization Header")
+	}
+	return authHeader[7:], nil
 }

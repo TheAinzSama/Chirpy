@@ -5,11 +5,19 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sync/atomic"
 
 	"github.com/TheAinzSama/Chirpy/internal/database"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
+
+type apiConfig struct {
+	fileserverHits atomic.Int32
+	dbQueries      *database.Queries
+	platform       string
+	secretKey      string
+}
 
 func main() {
 
@@ -30,6 +38,7 @@ func main() {
 	apiCfg := &apiConfig{}
 	apiCfg.dbQueries = dbQueries
 	apiCfg.platform = platform
+	apiCfg.secretKey = os.Getenv("SECRET_KEY")
 	mux := http.NewServeMux()
 	mux.Handle("/app/", apiCfg.middlewareMetricsInc(http.StripPrefix("/app/", http.FileServer(http.Dir(".")))))
 	mux.HandleFunc("GET /api/healthz", healthzHandler)
