@@ -47,8 +47,7 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 }
 func (apiCfg *apiConfig) handlerChirps(w http.ResponseWriter, r *http.Request) {
 	type tempVals struct {
-		Body          string `json:"body"`
-		Authorization string `json:"Authorization"`
+		Body string `json:"body"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
