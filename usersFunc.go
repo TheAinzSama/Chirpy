@@ -151,3 +151,43 @@ func (cfg *apiConfig) handlerRevokeRefreshToken(w http.ResponseWriter, r *http.R
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
+func (cfg *apiConfig) handlerUserUpdate(w http.ResponseWriter, r *http.Request) {
+	reqAuthheader := r.Header.Get("Authorization")
+	if reqAuthheader == "" {
+		respondWithError(w, http.StatusUnauthorized, "Empty Refresh Token", nil)
+		return
+	}
+	decoder := json.NewDecoder(r.Body)
+	params := userAuth{}
+	err := decoder.Decode(&params)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters", err)
+		return
+	}
+	if params.Password == "" {
+		respondWithError(w, http.StatusInternalServerError, "Empty Password", err)
+		return
+	}
+	tokenUserID, err := auth.ValidateJWT(reqAuthheader[7:], cfg.secretKey)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Couldn't get UserID", err)
+		return
+	}
+	hpass, err := auth.HashPassword(params.Password)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "couldn't Hash the password ", err)
+		return
+	}
+	createParams := database.UpdateUserInfoParams{
+		ID:             tokenUserID,
+		HashedPassword: hpass,
+	}
+	dberr := cfg.dbQueries.UpdateUserInfo(r.Context(), createParams)
+	if dberr != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't Update User", err)
+		return
+	}
+	respondWithJSON(w, http.StatusOK, userInfo{
+		Email: params.Email,
+	})
+}
