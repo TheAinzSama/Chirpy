@@ -83,7 +83,7 @@ func (apiCfg *apiConfig) handlerChirps(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respondWithJSON(w, http.StatusCreated, chirp{
-		Id:         tokenUserID.String(),
+		Id:         user.ID.String(),
 		Created_at: user.CreatedAt.String(),
 		Updated_at: user.UpdatedAt.String(),
 		Body:       user.Body,
@@ -140,4 +140,37 @@ func findAndReplace(body string) string {
 		}
 	}
 	return strings.Join(bodyList, " ")
+}
+func (apiCfg *apiConfig) handlerDeleteChirps(w http.ResponseWriter, r *http.Request) {
+	reqAuthheader := r.Header.Get("Authorization")
+	if reqAuthheader == "" {
+		respondWithError(w, http.StatusUnauthorized, "Empty Refresh Token", nil)
+		return
+	}
+	userID, err := auth.ValidateJWT(reqAuthheader[7:], apiCfg.secretKey)
+	if err != nil {
+		respondWithError(w, http.StatusForbidden, "Couldn't get UserID for Chyrp", err)
+		return
+	}
+
+	achirpID, err := uuid.Parse(r.PathValue("chirpID"))
+	if err != nil {
+		respondWithError(w, http.StatusNotFound, "NO Chirp ID was provided", nil)
+		return
+	}
+	bchirps, err := apiCfg.dbQueries.SelectChirp(r.Context(), achirpID)
+	if err != nil {
+		respondWithError(w, http.StatusNotFound, "Couldn't find Chirp", nil)
+		return
+	}
+	if userID != bchirps.UserID {
+		respondWithError(w, http.StatusForbidden, "You have no rights to delete this Chirp", err)
+		return
+	}
+	dBerr := apiCfg.dbQueries.DeleteChirp(r.Context(), achirpID)
+	if dBerr != nil {
+		respondWithError(w, http.StatusNotFound, "NO Chirp ID was provided", nil)
+		return
+	}
+	respondWithJSON(w, http.StatusNoContent, nil)
 }
