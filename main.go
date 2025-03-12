@@ -53,6 +53,7 @@ func main() {
 	mux.HandleFunc("POST /api/login", apiCfg.handlerUserAuth)
 	mux.HandleFunc("POST /api/refresh", apiCfg.handlerCheckRefreshToken)
 	mux.HandleFunc("POST /api/revoke", apiCfg.handlerRevokeRefreshToken)
+	mux.HandleFunc("POST /api/polka/webhooks", apiCfg.handlerSubscriptions)
 	srv := &http.Server{
 		Addr:    ":8080",
 		Handler: mux,

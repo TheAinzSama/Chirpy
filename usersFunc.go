@@ -7,6 +7,7 @@ import (
 
 	"github.com/TheAinzSama/Chirpy/internal/auth"
 	"github.com/TheAinzSama/Chirpy/internal/database"
+	"github.com/google/uuid"
 )
 
 type userInfo struct {
@@ -16,10 +17,18 @@ type userInfo struct {
 	Email         string `json:"email"`
 	Token         string `json:"token"`
 	Refresh_token string `json:"refresh_token"`
+	Is_chirpy_red bool   `json:"is_chirpy_red"`
 }
 type userAuth struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
+}
+type polkaResp struct {
+	Event string        `json:"event"`
+	Data  polkaRespData `json:"data"`
+}
+type polkaRespData struct {
+	User_id string `json:"user_id"`
 }
 
 func (cfg *apiConfig) handlerUserCreate(w http.ResponseWriter, r *http.Request) {
@@ -50,10 +59,11 @@ func (cfg *apiConfig) handlerUserCreate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	respondWithJSON(w, http.StatusCreated, userInfo{
-		ID:      user.ID.String(),
-		Created: user.CreatedAt.String(),
-		Updated: user.UpdatedAt.String(),
-		Email:   user.Email,
+		ID:            user.ID.String(),
+		Created:       user.CreatedAt.String(),
+		Updated:       user.UpdatedAt.String(),
+		Email:         user.Email,
+		Is_chirpy_red: user.IsChirpyRed.Bool,
 	})
 }
 func (cfg *apiConfig) handlerUserAuth(w http.ResponseWriter, r *http.Request) {
@@ -101,6 +111,7 @@ func (cfg *apiConfig) handlerUserAuth(w http.ResponseWriter, r *http.Request) {
 		Email:         user.Email,
 		Token:         token,
 		Refresh_token: refreshToken.Token,
+		Is_chirpy_red: user.IsChirpyRed.Bool,
 	})
 }
 func (cfg *apiConfig) handlerCheckRefreshToken(w http.ResponseWriter, r *http.Request) {
@@ -190,4 +201,26 @@ func (cfg *apiConfig) handlerUserUpdate(w http.ResponseWriter, r *http.Request) 
 	respondWithJSON(w, http.StatusOK, userInfo{
 		Email: params.Email,
 	})
+}
+func (cfg *apiConfig) handlerSubscriptions(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	params := polkaResp{}
+	err := decoder.Decode(&params)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters for Polka", err)
+		return
+	}
+	if params.Event != "user.upgraded" {
+		respondWithError(w, http.StatusNoContent, "", nil)
+		return
+	}
+	userID, err := uuid.Parse(params.Data.User_id)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't parse the user ID", err)
+	}
+	dberr := cfg.dbQueries.UpdateSubscription(r.Context(), userID)
+	if dberr != nil {
+		respondWithError(w, http.StatusNotFound, "Couldn't find the user", err)
+	}
+	respondWithError(w, http.StatusNoContent, "", nil)
 }
