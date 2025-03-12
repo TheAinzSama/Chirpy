@@ -17,6 +17,7 @@ type apiConfig struct {
 	dbQueries      *database.Queries
 	platform       string
 	secretKey      string
+	polkaKey       string
 }
 
 func main() {
@@ -39,6 +40,7 @@ func main() {
 	apiCfg.dbQueries = dbQueries
 	apiCfg.platform = platform
 	apiCfg.secretKey = os.Getenv("SECRET_KEY")
+	apiCfg.polkaKey = os.Getenv("POLKA_KEY")
 	mux := http.NewServeMux()
 	mux.Handle("/app/", apiCfg.middlewareMetricsInc(http.StripPrefix("/app/", http.FileServer(http.Dir(".")))))
 	mux.HandleFunc("GET /api/healthz", healthzHandler)

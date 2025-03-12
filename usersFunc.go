@@ -203,6 +203,15 @@ func (cfg *apiConfig) handlerUserUpdate(w http.ResponseWriter, r *http.Request) 
 	})
 }
 func (cfg *apiConfig) handlerSubscriptions(w http.ResponseWriter, r *http.Request) {
+	reqAuthheader := r.Header.Get("Authorization")
+	if reqAuthheader == "" {
+		respondWithError(w, http.StatusUnauthorized, "Empty ApiKey", nil)
+		return
+	}
+	if reqAuthheader[7:] != cfg.polkaKey {
+		respondWithError(w, http.StatusUnauthorized, "Invalid ApiKey", nil)
+		return
+	}
 	decoder := json.NewDecoder(r.Body)
 	params := polkaResp{}
 	err := decoder.Decode(&params)
