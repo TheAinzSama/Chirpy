@@ -91,11 +91,28 @@ func (apiCfg *apiConfig) handlerChirps(w http.ResponseWriter, r *http.Request) {
 	})
 }
 func (apiCfg *apiConfig) handlerAllChirps(w http.ResponseWriter, r *http.Request) {
-	chirps, err := apiCfg.dbQueries.SelectChirps(r.Context())
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Failed to create Chirp", nil)
-		return
+	userID := r.URL.Query().Get("author_id")
+	var chirps []database.Chirp
+	if userID != "" {
+		userUUID, err := uuid.Parse(userID)
+		if err != nil {
+			respondWithError(w, http.StatusNotFound, "Failed to parse User's ID", nil)
+			return
+		}
+		chirps, err = apiCfg.dbQueries.SelectManyChirp(r.Context(), userUUID)
+		if err != nil {
+			respondWithError(w, http.StatusBadRequest, "Failed fetch User's Chirps", nil)
+			return
+		}
+	} else {
+		var err error
+		chirps, err = apiCfg.dbQueries.SelectChirps(r.Context())
+		if err != nil {
+			respondWithError(w, http.StatusBadRequest, "Failed fetch Chirps", nil)
+			return
+		}
 	}
+
 	var chirpArray []chirp
 	for _, achirp := range chirps {
 		newChirp := chirp{
