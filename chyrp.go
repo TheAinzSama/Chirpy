@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"sort"
 	"strings"
 
 	"github.com/TheAinzSama/Chirpy/internal/auth"
@@ -112,7 +113,8 @@ func (apiCfg *apiConfig) handlerAllChirps(w http.ResponseWriter, r *http.Request
 			return
 		}
 	}
-
+	sortOrder := "asc"
+	sortOrder = r.URL.Query().Get("sort")
 	var chirpArray []chirp
 	for _, achirp := range chirps {
 		newChirp := chirp{
@@ -123,6 +125,11 @@ func (apiCfg *apiConfig) handlerAllChirps(w http.ResponseWriter, r *http.Request
 			User_id:    achirp.UserID.String(),
 		}
 		chirpArray = append(chirpArray, newChirp)
+	}
+	if sortOrder == "asc" {
+		sort.Slice(chirpArray, func(i int, j int) bool { return chirpArray[i].Created_at < chirpArray[j].Created_at })
+	} else {
+		sort.Slice(chirpArray, func(i int, j int) bool { return chirpArray[i].Created_at > chirpArray[j].Created_at })
 	}
 	respondWithJSON(w, http.StatusOK, chirpArray)
 }
